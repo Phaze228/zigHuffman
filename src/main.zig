@@ -46,14 +46,21 @@ pub fn main() !void {
     }
     in_file = try std.fs.realpathAlloc(allocator, in_file.?);
     if (out_file != null) {
-        out_file = try std.fs.realpathAlloc(allocator, out_file.?);
+        out_file = try std.fs.path.resolve(allocator, &.{out_file.?});
+        std.debug.print("{s}\n", .{out_file.?});
+        // out_file = try std.fs.realpathAlloc(allocator, out_file.?);
     }
 
     switch (flag) {
         .encode => {
             if (out_file == null) out_file = try appendString(in_file.?, ".encoded", allocator);
             const input_file = try std.fs.openFileAbsolute(in_file.?, .{});
-            var output_file = try std.fs.createFileAbsolute(out_file.?, .{});
+            var output_file: std.fs.File = undefined;
+            if (!std.fs.path.isAbsolute(out_file.?)) {
+                output_file = try std.fs.cwd().createFile(out_file.?, .{});
+            } else {
+                output_file = try std.fs.createFileAbsolute(out_file.?, .{});
+            }
             defer output_file.close();
             var encode_huffman = Huffman(u8).init(allocator);
             errdefer {
@@ -70,7 +77,12 @@ pub fn main() !void {
         .decode => {
             if (out_file == null) out_file = try appendString(in_file.?, "decoded", allocator);
             const input_file = try std.fs.openFileAbsolute(in_file.?, .{});
-            var output_file = try std.fs.createFileAbsolute(out_file.?, .{});
+            var output_file: std.fs.File = undefined;
+            if (!std.fs.path.isAbsolute(out_file.?)) {
+                output_file = try std.fs.cwd().createFile(out_file.?, .{});
+            } else {
+                output_file = try std.fs.createFileAbsolute(out_file.?, .{});
+            }
             var decode_huffman = Huffman(u8).init(allocator);
             errdefer {
                 decode_huffman.deinit();
